@@ -1,0 +1,15 @@
+2024-02-22 11:20:31 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "HASH_VALUE CHARACTER VARYING(255)": "'ffd8ffe000104a46494600010100000100010000ffe1006a45786966000049492a0008000000030... (89712)"; SQL statement:
+insert into file_details (id, encoded_filename, file_name, hash_value, real_file_name, received_name) values (default, ?, ?, ?, ?, ?) [22001-214]
+2024-02-22 11:23:31 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "HASH_VALUE CHARACTER VARYING(255)": "'ffd8ffe000104a46494600010100000100010000ffe1006a45786966000049492a0008000000030... (89712)"; SQL statement:
+insert into file_details (id, encoded_filename, file_name, hash_value, real_file_name, received_name) values (default, ?, ?, ?, ?, ?) [22001-214]
+2024-02-22 11:25:28 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "HASH_VALUE CHARACTER VARYING(512)": "'ffd8ffe000104a46494600010100000100010000ffe1006a45786966000049492a0008000000030... (89712)"; SQL statement:
+insert into file_details (id, encoded_filename, file_name, hash_value, real_file_name, received_name) values (default, ?, ?, ?, ?, ?) [22001-214]
+2024-02-22 11:26:07 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "HASH_VALUE CHARACTER VARYING(20000)": "'ffd8ffe000104a46494600010100000100010000ffe1006a45786966000049492a0008000000030... (89712)"; SQL statement:
+insert into file_details (id, encoded_filename, file_name, hash_value, real_file_name, received_name) values (default, ?, ?, ?, ?, ?) [22001-214]
+2024-02-22 11:28:55 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "HASH_VALUE CHARACTER VARYING(32)": "'ffd8ffe000104a46494600010100000100010000ffe1006a45786966000049492a0008000000030... (89712)"; SQL statement:
+insert into file_details (id, encoded_filename, file_name, hash_value, real_file_name, received_name) values (default, ?, ?, ?, ?, ?) [22001-214]

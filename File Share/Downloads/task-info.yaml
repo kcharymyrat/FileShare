@@ -1,0 +1,530 @@
+type: edu
+files:
+  - name: src/fileshare/Application.java
+    visible: true
+    text: |
+      package fileshare;
+      
+      import org.springframework.boot.SpringApplication;
+      import org.springframework.boot.autoconfigure.SpringBootApplication;
+      
+      @SpringBootApplication
+      public class Application {
+          public static void main(String[] args) {
+              SpringApplication.run(Application.class, args);
+          }
+      }
+    learner_created: false
+  - name: src/resources/application.properties
+    visible: true
+    text: |
+      server.port=8888
+      
+      management.endpoints.web.exposure.include=*
+      management.endpoint.shutdown.enabled=true
+      
+      uploads.dir=../uploads
+    learner_created: false
+  - name: build.gradle
+    visible: true
+    text: |
+      buildscript {
+          apply plugin: 'hyperskill'
+      
+          repositories {
+              mavenCentral()
+          }
+      
+          dependencies {
+              classpath "org.springframework.boot:spring-boot-gradle-plugin:$hs.spring.bootVersion"
+              classpath "io.spring.gradle:dependency-management-plugin:$hs.spring.dependencyManagementVersion"
+          }
+      }
+      
+      apply plugin: 'java'
+      apply plugin: 'org.springframework.boot'
+      apply plugin: 'io.spring.dependency-management'
+      
+      repositories {
+          mavenCentral()
+      }
+      
+      sourceSets.main.resources.srcDirs = ["src/resources"]
+      
+      dependencies {
+          implementation 'org.springframework.boot:spring-boot-starter'
+          implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+          runtimeOnly 'com.h2database:h2'
+          implementation 'org.springframework.boot:spring-boot-starter-actuator'
+          implementation 'org.springframework.boot:spring-boot-starter-web'
+      }
+      
+      test {
+          jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED'
+      }
+    learner_created: false
+  - name: src/fileshare/MainController.java
+    visible: true
+    text: |
+      package fileshare;
+      
+      import org.springframework.beans.factory.annotation.Autowired;
+      import org.springframework.http.HttpStatus;
+      import org.springframework.http.ResponseEntity;
+      import org.springframework.web.bind.annotation.*;
+      import org.springframework.web.multipart.MultipartFile;
+      
+      import java.io.File;
+      import java.io.IOException;
+      import java.nio.file.Path;
+      
+      @RestController
+      public class MainController {
+      
+          private final DirectoryService dirService;
+      
+          public MainController(@Autowired DirectoryService dirService) {
+              this.dirService = dirService;
+          }
+      
+          @PostMapping("/api/v1/upload")
+          @ResponseStatus(HttpStatus.CREATED)
+          public void uploadFile(
+                  @RequestParam("file") MultipartFile file
+          ) {
+              // get the uploads File
+              File uploadsDir = dirService.createUploadsDirectory();
+              Path path = Path.of(uploadsDir.getPath(), file.getOriginalFilename());
+      
+              try {
+                  file.transferTo(path);
+              } catch (IOException e) {
+                  throw new RuntimeException(e);
+              }
+      
+          }
+      
+      
+          @GetMapping("/api/v1/info")
+          @ResponseStatus(HttpStatus.OK)
+          public ResponseEntity<?> getFileInfo() {
+              File uploadsDir = dirService.createUploadsDirectory();
+              File[] subFiles = uploadsDir.listFiles();
+      
+              if (subFiles != null) {
+                  int totalFiles = subFiles.length;
+                  long totalBytes = 0;
+                  for (File subFile : subFiles) {
+                      totalBytes += subFile.length();
+                  }
+      
+                  return ResponseEntity.ok(new FileInfoDTO(totalFiles, totalBytes));
+      
+              }
+      
+              return ResponseEntity.ok().build();
+          }
+      }
+    learner_created: false
+  - name: src/fileshare/FileInfoDTO.java
+    visible: true
+    text: |+
+      package fileshare;
+      
+      import com.fasterxml.jackson.annotation.JsonProperty;
+      
+      public record FileInfoDTO(
+          @JsonProperty("total_files") int totalFiles,
+          @JsonProperty("total_bytes") long totalBytes
+      ){}
+    
+    learner_created: false
+  - name: src/fileshare/DirectoryService.java
+    visible: true
+    text: |
+      package fileshare;
+      
+      import org.springframework.beans.factory.annotation.Value;
+      import org.springframework.stereotype.Component;
+      import org.springframework.stereotype.Service;
+      
+      import java.io.File;
+      
+      @Service
+      public class DirectoryService {
+      
+          @Value("${uploads.dir}")
+          private String uploadsDirectoryPath;
+      
+      
+          public File createUploadsDirectory(){
+              // create a directory
+              File uploadsDir = new File(getUploadsDirectoryPath());
+      
+              if (!uploadsDir.exists()) {
+                  boolean created = uploadsDir.mkdirs();
+                  if (created) {
+                      System.out.println("Uploads directory created successfully at: " + uploadsDir.getAbsolutePath());
+                  } else {
+                      System.err.println("Failed to create uploads directory at: " + uploadsDir.getAbsolutePath());
+                  }
+              } else {
+                  System.out.println("Uploads directory already exists at: " + uploadsDir.getAbsolutePath());
+              }
+      
+              System.out.printf("uploadsDir = %s\n", uploadsDir);
+              return uploadsDir;
+          }
+      
+      
+          public String getUploadsDirectoryPath() {
+              return uploadsDirectoryPath;
+          }
+      }
+    learner_created: false
+  - name: test/files/file 1.jpg
+    visible: false
+    is_binary: true
+    learner_created: false
+  - name: test/files/file2.jpg
+    visible: false
+    is_binary: true
+    learner_created: false
+  - name: test/files/file3.txt
+    visible: false
+    text: "Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis rerum\
+    \ corporis dolorem ad libero placeat, itaque, et ullam quaerat facere voluptatem\
+    \ laborum tenetur ducimus. Culpa eum adipisci suscipit, explicabo esse atque neque\
+    \ cum aliquam dolorem ducimus nisi autem expedita pariatur vitae, mollitia aperiam\
+    \ blanditiis cupiditate exercitationem fugit officia amet maiores."
+    learner_created: false
+  - name: test/FileClient.java
+    visible: false
+    text: |
+      import java.io.IOException;
+      import java.net.URI;
+      import java.net.http.HttpClient;
+      import java.net.http.HttpRequest;
+      import java.net.http.HttpResponse;
+      import java.nio.charset.StandardCharsets;
+      import java.util.ArrayList;
+      import java.util.List;
+      import java.util.UUID;
+      
+      /**
+       * Utility class for sending multipart/form-data requests
+       */
+      class FileClient {
+          private final HttpClient client;
+      
+          public FileClient() {
+              this.client = HttpClient.newHttpClient();
+          }
+      
+          /**
+           * Sends POST multipart/form-data request with the file to the server's address
+           *
+           * @param address  server's address
+           * @param fileData container with file name, file contents and mime type
+           * @return HttpResponse from the server
+           * @throws IOException          when a general IO error occurs
+           * @throws InterruptedException when the thread is interrupted
+           */
+          public HttpResponse<byte[]> post(String address, FileData fileData) throws IOException, InterruptedException {
+              String boundary = UUID.randomUUID().toString();
+              HttpRequest request = HttpRequest.newBuilder()
+                      .uri(URI.create(address))
+                      .headers("Content-Type", "multipart/form-data; boundary=" + boundary)
+                      .POST(ofMultipartData(fileData, boundary))
+                      .build();
+      
+              return client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+          }
+      
+          /**
+           * Sends GET request to fetch a file by the specified URI
+           *
+           * @param address the file URI
+           * @return HttpResponse
+           * @throws IOException          when a general IO error occurs
+           * @throws InterruptedException when the thread is interrupted
+           */
+          public HttpResponse<byte[]> get(String address) throws IOException, InterruptedException {
+              HttpRequest request = HttpRequest.newBuilder()
+                      .uri(URI.create(address))
+                      .GET()
+                      .build();
+      
+              return client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+          }
+      
+          /**
+           * Utility method to create a BodyPublisher for multipart/form-data media type
+           *
+           * @param fileData container with file name, file contents and mime type
+           * @param boundary request parts separator
+           * @return BodyPublisher
+           */
+          private HttpRequest.BodyPublisher ofMultipartData(FileData fileData, String boundary) {
+              List<byte[]> byteArrays = new ArrayList<>();
+      
+              byteArrays.add("--%s\r\nContent-Disposition: form-data; name="
+                      .formatted(boundary).getBytes(StandardCharsets.UTF_8));
+              byteArrays.add(("\"file\"; filename=\"%s\"\r\nContent-Type: %s\r\n\r\n")
+                      .formatted(fileData.getOriginalName(), fileData.getMimeType()).getBytes(StandardCharsets.UTF_8));
+              byteArrays.add(fileData.getContents());
+              byteArrays.add("\r\n".getBytes(StandardCharsets.UTF_8));
+              byteArrays.add("--%s--".formatted(boundary).getBytes(StandardCharsets.UTF_8));
+      
+              return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
+          }
+      }
+    learner_created: false
+  - name: test/FileData.java
+    visible: false
+    text: |
+      import java.io.IOException;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+      
+      class FileData {
+          private String originalName;
+          private byte[] contents;
+          private String mimeType;
+      
+          private FileData() { }
+      
+          public static FileData of(String pathString) throws IOException {
+              Path path = Path.of(pathString);
+              String mime = Files.probeContentType(path);
+              byte[] bytes = Files.readAllBytes(path);
+              return new FileData()
+                      .setOriginalName(path.getFileName().toString())
+                      .setContents(bytes)
+                      .setMimeType(mime == null ? "application/octet-stream" : mime);
+          }
+      
+          public String getOriginalName() {
+              return originalName;
+          }
+      
+          public FileData setOriginalName(String originalName) {
+              this.originalName = originalName;
+              return this;
+          }
+      
+          public byte[] getContents() {
+              return contents;
+          }
+      
+          private FileData setContents(byte[] contents) {
+              this.contents = contents;
+              return this;
+          }
+      
+          public String getMimeType() {
+              return mimeType;
+          }
+      
+          public FileData setMimeType(String mimeType) {
+              this.mimeType = mimeType;
+              return this;
+          }
+      }
+    learner_created: false
+  - name: test/FileShareTest.java
+    visible: false
+    text: |
+      import org.hyperskill.hstest.dynamic.DynamicTest;
+      import org.hyperskill.hstest.dynamic.input.DynamicTesting;
+      import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+      import org.hyperskill.hstest.stage.SpringTest;
+      import org.hyperskill.hstest.testcase.CheckResult;
+      
+      import java.io.IOException;
+      import java.net.http.HttpResponse;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+      import java.util.Arrays;
+      import java.util.Comparator;
+      import java.util.UUID;
+      
+      import static org.hyperskill.hstest.testing.expect.Expectation.expect;
+      import static org.hyperskill.hstest.testing.expect.json.JsonChecker.isObject;
+      
+      public class FileShareTest extends SpringTest {
+          private final String uploadUrl = "http://localhost:" + this.port + "/api/v1/upload";
+          private final String downloadUrl = "http://localhost:" + this.port + "/api/v1/download";
+          private final String infoUrl = "/api/v1/info";
+          private final Path storagePath = Path.of("../uploads");
+      
+          CheckResult emptyStorageAndCheckInfo() {
+              clearStorage();
+      
+              var response = get(infoUrl).send();
+      
+              checkStatusCode(
+                      response.getRequest().getMethod(),
+                      response.getRequest().getEndpoint(),
+                      response.getStatusCode(),
+                      200
+              );
+      
+              checkJson(response, 0, 0);
+      
+              return CheckResult.correct();
+          }
+      
+          CheckResult testInfo(int count, int size) {
+              var response = get(infoUrl).send();
+      
+              checkStatusCode(
+                      response.getRequest().getMethod(),
+                      response.getRequest().getEndpoint(),
+                      response.getStatusCode(),
+                      200
+              );
+      
+              checkJson(response, count, size);
+      
+              return CheckResult.correct();
+          }
+      
+          CheckResult testNotFound() {
+              try {
+                  FileClient client = new FileClient();
+                  var location = downloadUrl + "/" + UUID.randomUUID();
+                  HttpResponse<byte[]> response = client.get(location);
+                  checkStatusCode(
+                          response.request().method(),
+                          response.request().uri().toString(),
+                          response.statusCode(),
+                          404
+                  );
+                  return CheckResult.correct();
+              } catch (IOException | InterruptedException e) {
+                  return CheckResult.wrong("Error occurred during the test execution: " + e.getMessage());
+              }
+          }
+      
+          CheckResult testPostAndGetFile(String filepath, String filename) {
+              try {
+                  FileClient client = new FileClient();
+      
+                  FileData fileData = FileData.of(filepath).setOriginalName(filename);
+      
+                  HttpResponse<byte[]> postResponse = client.post(uploadUrl, fileData);
+      
+                  checkStatusCode(
+                          postResponse.request().method(),
+                          postResponse.request().uri().toString(),
+                          postResponse.statusCode(),
+                          201
+                  );
+      
+                  String location = postResponse.headers()
+                          .firstValue("Location")
+                          .orElseThrow(() -> new WrongAnswer("Response should contain the 'Location' header."));
+      
+                  if (location.isBlank()) {
+                      return CheckResult.wrong("The value of the 'Location' header should not be blank");
+                  }
+      
+                  var sanitizedLink = location
+                          .replaceAll(".*/", "")
+                          .replaceAll("\\W", "");
+      
+                  if (!sanitizedLink.matches(fileData.getOriginalName().replaceAll("\\W", ""))) {
+                      return CheckResult.wrong("""
+                              The 'Location' value does not look like containing a link to the uploaded file:
+                              Location: %s
+                              Uploaded file name: %s
+                              \r
+                              """.formatted(location, fileData.getOriginalName()));
+                  }
+      
+                  HttpResponse<byte[]> getResponse = client.get(location);
+      
+                  if (!Arrays.equals(fileData.getContents(), getResponse.body())) {
+                      return CheckResult.wrong("""
+                              GET %s
+                              returned a request body that does not match the expected file content
+                              """.formatted(location));
+                  }
+                  return CheckResult.correct();
+              } catch (IllegalArgumentException e) {
+                  return CheckResult.wrong("""
+                          Cannot download a file using the URL from the response. Make sure you return a valid URL.
+                          Error: %s
+                          """.formatted(e.getMessage()));
+              } catch (IOException | InterruptedException e) {
+                  return CheckResult.wrong("Error occurred during the test execution: " + e.getMessage());
+              }
+          }
+      
+          @DynamicTest
+          DynamicTesting[] dt = {
+                  this::emptyStorageAndCheckInfo,
+                  () -> testPostAndGetFile("./test/files/file 1.jpg", "file 1.jpg"),
+                  () -> testPostAndGetFile("./test/files/file2.jpg", "file 1.jpg"),
+                  () -> testPostAndGetFile("./test/files/file3.txt", "file3.txt"),
+                  this::testNotFound,
+                  () -> testInfo(2, 32992),
+                  this::reloadServer,
+                  () -> testInfo(2, 32992),
+                  this::emptyStorageAndCheckInfo,
+          };
+      
+          private void checkStatusCode(String method, String endpoint, int actual, int expected) {
+              if (actual != expected) {
+                  throw new WrongAnswer("""
+                          %s %s should respond with status code %d, responded with %d
+                          \r
+                          """.formatted(method, endpoint, expected, actual));
+              }
+          }
+      
+          private void checkJson(org.hyperskill.hstest.mocks.web.response.HttpResponse response,
+                                 int expectedCount,
+                                 int expectedSize) {
+              try {
+                  response.getJson();
+              } catch (Exception e) {
+                  throw new WrongAnswer("GET %s should return a valid JSON".formatted(infoUrl));
+              }
+      
+              expect(response.getContent()).asJson().check(isObject()
+                      .value("total_files", expectedCount)
+                      .value("total_bytes", expectedSize)
+              );
+          }
+      
+          private void clearStorage() {
+              try (var stream = Files.walk(storagePath)) {
+                  stream.sorted(Comparator.reverseOrder())
+                          .filter(path -> !path.equals(storagePath))
+                          .forEach(path -> {
+                              try {
+                                  Files.delete(path);
+                              } catch (IOException e) {
+                                  throw new WrongAnswer("Error clearing the file storage folder: " + e.getMessage());
+                              }
+                          });
+              } catch (Exception ex) {
+                  throw new WrongAnswer("Error clearing the file storage folder: " + ex.getMessage());
+              }
+          }
+      
+          private CheckResult reloadServer() {
+              try {
+                  reloadSpring();
+              } catch (Exception ex) {
+                  return CheckResult.wrong("Error reloading the application: " + ex.getMessage());
+              }
+              return CheckResult.correct();
+          }
+      }
+    learner_created: false
+feedback_link: https://hyperskill.org/projects/397/stages/2346/implement#comment
+status: Solved
+record: 1
